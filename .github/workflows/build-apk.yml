@@ -1345,7 +1345,7 @@ jobs:
           export PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-35/android.jar
 
           set -o pipefail
-          python3 -c 'p="android/build-apk.sh"; s=open(p).read(); open(p,"w").write("\n".join(l for l in s.splitlines() if "nullDescriptor" not in l and "libmain_v80" not in l)+"\n")'
+          python3 -c 'p="android/build-apk.sh"; s=open(p).read(); open(p,"w").write("\n".join(l for l in s.splitlines() if "nullDescriptor" not in l)+"\n")'
           bash android/build-apk.sh arm64-v8a 2>&1 | tee /tmp/protodroid-apk-build.log
           ls -lh build/apk/prototype.apk
 
