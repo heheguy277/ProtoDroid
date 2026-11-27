@@ -818,7 +818,7 @@ jobs:
       - name: Install tools
         uses: ./.github/actions/install-apt-packages
         with:
-          packages: ninja-build glslang-tools pkg-config python3-pip p7zip-full unzip ccache
+          packages: ninja-build glslang-tools pkg-config python3-pip p7zip-full unzip ccache patchelf
 
       - name: Install build Python tools
         run: |
@@ -853,6 +853,9 @@ jobs:
       - name: Prepare deps layout
         run: |
           mkdir -p $HOME/protodroid-data/android-deps/arm64-v8a
+          if [ -f "deps-out/arm64-v8a/lib/libvulkan_wrapper.so" ]; then
+            patchelf --remove-needed libcutils.so deps-out/arm64-v8a/lib/libvulkan_wrapper.so
+          fi
           cp -r deps-out/arm64-v8a/* $HOME/protodroid-data/android-deps/arm64-v8a/ || true
           for archive in libavformat.a libavcodec.a libavutil.a libswresample.a; do
             test -s "$HOME/protodroid-data/android-deps/arm64-v8a/lib/$archive"
