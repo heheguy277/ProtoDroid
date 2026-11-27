@@ -1344,6 +1344,9 @@ jobs:
           export BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/36.0.0
           export PLATFORM_JAR=$ANDROID_SDK_ROOT/platforms/android-35/android.jar
 
+          mkdir -p build/android/arm64-v8a-v80
+          cp build/android/arm64-v8a/libmain.so build/android/arm64-v8a-v80/libmain.so
+
           bash android/build-apk.sh arm64-v8a 2>&1 | tee /tmp/protodroid-apk-build.log
           ls -lh build/apk/prototype.apk
           # Keep unstripped symbols before they were stripped for APK
@@ -1389,7 +1392,6 @@ jobs:
           SDL=/tmp/protodroid-apk-check/lib/arm64-v8a/libSDL2.so
           MAIN=/tmp/protodroid-apk-check/lib/arm64-v8a/libmain.so
           test "$(stat -c%s "$MAIN")" -gt 100000
-          source build/apk/native-build.txt
           $TOOLS/llvm-readelf -d "$MAIN" | tee /tmp/libmain-dynamic.txt
           ! grep -E 'libav(format|codec|util)|libswresample' /tmp/libmain-dynamic.txt
           MAIN_STRINGS=$($TOOLS/llvm-strings "$MAIN")
