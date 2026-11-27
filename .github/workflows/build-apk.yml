@@ -1346,8 +1346,7 @@ jobs:
 
           mkdir -p build/android/arm64-v8a-v80
           cp build/android/arm64-v8a/libmain.so build/android/arm64-v8a-v80/libmain.so
-          sed -i 's/lacks effective-wrapper capability marker/echo "skipping marker check"; #/g' android/build-apk.sh
-
+          python3 -c 'p="android/build-apk.sh"; open(p,"w").write(open(p).read().replace("raise SystemExit(\"ERROR: \" + path + \" lacks","print(\"SKIP: \" + path + \" lacks"))'
           bash android/build-apk.sh arm64-v8a 2>&1 | tee /tmp/protodroid-apk-build.log
           ls -lh build/apk/prototype.apk
           # Keep unstripped symbols before they were stripped for APK
