@@ -12,43 +12,32 @@ jobs:
   repack-apk:
     runs-on: ubuntu-24.04
     steps:
-      - name: Install patchelf and zip tools
+      - name: Install zip tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf unzip zip
+          sudo apt-get install -y unzip zip
 
-      - name: Download base v0.15 APK, patch wrapper, align, and sign
+      - name: Download base v0.15 APK, add Android 11 HAL stubs, align, and sign
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           gh release download --repo ${{ github.repository }} --pattern "prototype.apk" --dir /tmp
 
-          mkdir -p /tmp/apk-unpacked
-          unzip -q /tmp/prototype.apk "lib/arm64-v8a/libvulkan_wrapper.so" -d /tmp/apk-unpacked
-          WRAPPER="/tmp/apk-unpacked/lib/arm64-v8a/libvulkan_wrapper.so"
+          mkdir -p /tmp/apk-unpacked/lib/arm64-v8a
+          CC="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang"
 
-          echo "=== Before patchelf ==="
-          patchelf --print-needed "$WRAPPER"
+          # Create tiny stub libhardware.so exporting hw_get_module (returns -2 ENOENT safely)
+          echo 'int hw_get_module(const char *id, const void **module) { return -2; }' > /tmp/hw_stub.c
+          "$CC" -shared -fPIC /tmp/hw_stub.c -o /tmp/apk-unpacked/lib/arm64-v8a/libhardware.so
 
-          for lib in $(patchelf --print-needed "$WRAPPER"); do
-            case "$lib" in
-              libc.so|libm.so|libdl.so|liblog.so|libz.so|libandroid.so|libnativewindow.so|libvulkan.so|libsync.so)
-                echo "Keeping public NDK lib: $lib"
-                ;;
-              *)
-                echo "Removing private system lib: $lib"
-                patchelf --remove-needed "$lib" "$WRAPPER"
-                ;;
-            esac
-          done
-
-          echo "=== After patchelf ==="
-          patchelf --print-needed "$WRAPPER"
+          # Create tiny stub libcutils.so
+          echo 'int property_get(const char *key, char *value, const char *default_value) { return 0; }' > /tmp/cutils_stub.c
+          "$CC" -shared -fPIC /tmp/cutils_stub.c -o /tmp/apk-unpacked/lib/arm64-v8a/libcutils.so
 
           cp /tmp/prototype.apk /tmp/patched-unaligned.apk
           cd /tmp/apk-unpacked
-          zip -0 /tmp/patched-unaligned.apk lib/arm64-v8a/libvulkan_wrapper.so
+          zip -0 /tmp/patched-unaligned.apk lib/arm64-v8a/libhardware.so lib/arm64-v8a/libcutils.so
 
           BUILD_TOOLS=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/* | sort -V | tail -n 1)
           "$BUILD_TOOLS/zipalign" -p -f 4 /tmp/patched-unaligned.apk /tmp/patched-aligned.apk
