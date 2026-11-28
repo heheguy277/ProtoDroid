@@ -26,7 +26,25 @@ jobs:
 
           mkdir -p /tmp/apk-unpacked
           unzip -q /tmp/prototype.apk "lib/arm64-v8a/libvulkan_wrapper.so" -d /tmp/apk-unpacked
-          patchelf --remove-needed libcutils.so /tmp/apk-unpacked/lib/arm64-v8a/libvulkan_wrapper.so
+          WRAPPER="/tmp/apk-unpacked/lib/arm64-v8a/libvulkan_wrapper.so"
+
+          echo "=== Before patchelf ==="
+          patchelf --print-needed "$WRAPPER"
+
+          for lib in $(patchelf --print-needed "$WRAPPER"); do
+            case "$lib" in
+              libc.so|libm.so|libdl.so|liblog.so|libz.so|libandroid.so|libnativewindow.so|libvulkan.so|libsync.so)
+                echo "Keeping public NDK lib: $lib"
+                ;;
+              *)
+                echo "Removing private system lib: $lib"
+                patchelf --remove-needed "$lib" "$WRAPPER"
+                ;;
+            esac
+          done
+
+          echo "=== After patchelf ==="
+          patchelf --print-needed "$WRAPPER"
 
           cp /tmp/prototype.apk /tmp/patched-unaligned.apk
           cd /tmp/apk-unpacked
